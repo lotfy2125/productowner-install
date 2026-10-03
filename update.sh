@@ -4,6 +4,8 @@
 #   ./update.sh 1.4.0      a given version (saved in .env)
 #   ./update.sh --image-file productowner-1.4.0.tar   from a file (servers without internet)
 set -euo pipefail
+# Git Bash on Windows (for trying it out) would turn container paths like /data into Windows paths.
+export MSYS_NO_PATHCONV=1
 cd "$(dirname "$0")"
 [ -f .env ] || { echo "No .env here: run ./install.sh first."; exit 1; }
 

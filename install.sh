@@ -4,6 +4,8 @@
 #   ./install.sh --domain po.acme.com --email it@acme.com --yes   no questions (meetings on, meet.<domain>)
 # Other options: --no-meetings  --meet-domain NAME  --image NAME  --version TAG  --image-file productowner.tar
 set -euo pipefail
+# Git Bash on Windows (for trying it out) would turn container paths like /data into Windows paths.
+export MSYS_NO_PATHCONV=1
 cd "$(dirname "$0")"
 
 DOMAIN="" EMAIL="" MEET="" MEETINGS=yes IMAGE="" VERSION="" IMAGE_FILE="" YES=no

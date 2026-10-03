@@ -4,6 +4,8 @@
 #   KEEP=30 BACKUP_DIR=/mnt/nas ./backup.sh
 # .env is NOT in the backup (it holds the secrets): keep a copy of it somewhere safe, apart from the backups.
 set -euo pipefail
+# Git Bash on Windows (for trying it out) would turn container paths like /data into Windows paths.
+export MSYS_NO_PATHCONV=1
 cd "$(dirname "$0")"
 DIR="${BACKUP_DIR:-./backups}/$(date +%Y%m%d-%H%M%S)"
 KEEP="${KEEP:-14}"

@@ -3,6 +3,8 @@
 # Replaces the current database and files with the backup's. The .env must be the one from that install
 # (PO_SECRET unlocks the saved tokens).
 set -euo pipefail
+# Git Bash on Windows (for trying it out) would turn container paths like /data into Windows paths.
+export MSYS_NO_PATHCONV=1
 cd "$(dirname "$0")"
 DIR="${1:?Which backup? e.g. ./restore.sh backups/20261002-023000}"
 [ -f "$DIR/database.dump" ] || { echo "No database.dump in $DIR"; exit 1; }
