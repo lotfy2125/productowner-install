@@ -11,7 +11,7 @@ meetings and automatic HTTPS. Each company runs its own copy, on a cloud server 
 | Disk | 40 GB to start. Meeting recordings use about 0.5 GB per hour. |
 | Docker | Docker Engine with the Compose plugin: `curl -fsSL https://get.docker.com \| sh` |
 | Names | One DNS name for the app (e.g. `productowner.acme.com`), and one for meetings (e.g. `meet.productowner.acme.com`), both pointing at the server. |
-| Firewall | In: TCP 80 and 443. For meetings also TCP 7881 and UDP 50000–50100. |
+| Firewall | In: TCP 80 and 443. For meetings also TCP 7881 and UDP 7882. |
 | Email (optional) | An SMTP account for invitations, password resets and meeting recaps. |
 
 ## Install

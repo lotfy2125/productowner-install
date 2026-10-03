@@ -71,7 +71,7 @@ services:
     ports:
       # Media: browsers send audio and video here (UDP first, TCP when UDP is blocked).
       - "7881:7881"
-      - "50000-50100:50000-50100/udp"
+      - "7882:7882/udp"
 
 volumes:
   caddy-data:

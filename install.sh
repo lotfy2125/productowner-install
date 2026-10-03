@@ -114,7 +114,7 @@ cat <<MSG
 
   Check that:
   - $DOMAIN${MEET_DOMAIN:+ and $MEET_DOMAIN} point at this server's public address (DNS A record);
-  - the firewall lets in TCP 80 and 443${MEET_DOMAIN:+, TCP 7881 and UDP 50000-50100 (meetings)}.
+  - the firewall lets in TCP 80 and 443${MEET_DOMAIN:+, TCP 7881 and UDP 7882 (meetings)}.
 
   Every night: ./backup.sh  (e.g. in cron: 30 2 * * * $(pwd)/backup.sh)
   New version:  ./update.sh            (or ./update.sh 1.4.0 for a given version)
