@@ -1,0 +1,80 @@
+# ProductOwner — install on one Linux server with Docker.
+# Set up with ./install.sh (it writes .env), then: docker compose up -d
+# Guide: docs/INSTALL.md
+name: productowner
+
+services:
+  # HTTPS for everything: certificates from Let's Encrypt, renewed by themselves.
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env}
+      MEET_DOMAIN: ${MEET_DOMAIN:-}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL in .env}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy/sites:/etc/caddy/sites:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+
+  # ProductOwner itself: the API and the web app.
+  app:
+    image: ${PRODUCTOWNER_IMAGE:-ghcr.io/lotfy2125/productowner}:${PRODUCTOWNER_VERSION:-latest}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://productowner:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/productowner
+      APP_URL: https://${DOMAIN}
+      PUBLIC_API_URL: https://${DOMAIN}/api
+      LIVEKIT_URL: ${LIVEKIT_PUBLIC_URL:-}
+      LIVEKIT_INTERNAL_URL: http://livekit:7880
+      SEED_SAMPLE_DATA: "false"
+    volumes:
+      # Meeting recordings, transcripts and recaps.
+      - app-files:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: productowner
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: productowner
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U productowner"]
+      interval: 5s
+      retries: 20
+
+  # Video server for meetings. On when COMPOSE_PROFILES includes "meetings".
+  livekit:
+    image: livekit/livekit-server:v1.9
+    profiles: ["meetings"]
+    restart: unless-stopped
+    command: ["--config", "/etc/livekit.yaml"]
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    ports:
+      # Media: browsers send audio and video here (UDP first, TCP when UDP is blocked).
+      - "7881:7881"
+      - "50000-50100:50000-50100/udp"
+
+volumes:
+  caddy-data:
+  caddy-config:
+  app-files:
+  postgres-data:
