@@ -9,7 +9,7 @@ services:
     image: caddy:2
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "${HTTP_PORT:-80}:80"
       - "443:443"
       - "443:443/udp"
     environment:
@@ -19,6 +19,7 @@ services:
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./caddy/sites:/etc/caddy/sites:ro
+      - ./caddy/site:/etc/caddy/site:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on:

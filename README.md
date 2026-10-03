@@ -10,32 +10,36 @@ meetings and automatic HTTPS. Each company runs its own copy, on a cloud server 
 | Server | Linux (Ubuntu 22.04/24.04 or Debian 12), 2 CPUs and 4 GB memory for up to ~50 people; 4 CPUs / 8 GB with regular meetings. Intel/AMD or ARM. |
 | Disk | 40 GB to start. Meeting recordings use about 0.5 GB per hour. |
 | Docker | Docker Engine with the Compose plugin: `curl -fsSL https://get.docker.com \| sh` |
-| Names | One DNS name for the app (e.g. `productowner.acme.com`), and one for meetings (e.g. `meet.productowner.acme.com`), both pointing at the server. |
-| Firewall | In: TCP 80 and 443. For meetings also TCP 7881 and UDP 7882. |
+| Name | One DNS name for the app (e.g. `productowner.acme.com`) pointing at the server. Meetings use the same address. |
+| Firewall | In: TCP 80 and 443. For meetings also TCP 7881 and UDP 7882. (On Windows the installer adds the rule for you.) |
 | Email (optional) | An SMTP account for invitations, password resets and meeting recaps. |
 
 ## Install
 
-1. Download the install files to the server, e.g. into `/opt/productowner`:
+One line, on the server (Linux, or a Windows/Mac computer with Docker Desktop running; on Windows use Git Bash):
 
-   ```bash
-   sudo mkdir -p /opt/productowner && sudo chown "$USER" /opt/productowner && cd /opt/productowner
-   curl -fsSL https://github.com/lotfy2125/productowner-install/releases/latest/download/productowner-install.tar.gz | tar xz --strip-components=1
-   ```
+```bash
+curl -fsSL https://raw.githubusercontent.com/lotfy2125/productowner-install/main/get.sh | bash
+```
 
-2. Run the installer and answer its questions:
+It downloads the install files into `./productowner` and asks two things:
 
-   ```bash
-   cd /opt/productowner
-   ./install.sh
-   ```
+1. **Where people will use it**
+   - *On the internet*: give the DNS name (e.g. `productowner.acme.com`) and an email. HTTPS certificates come from
+     Let's Encrypt by themselves; the video server finds the server's public address by itself.
+   - *Only on this network* (office or home, no DNS name): nothing to type. It finds this computer's address
+     (e.g. `192.168.1.20`), makes its own HTTPS certificate and, on Windows, asks once to let other computers in.
+     People open `https://<that address>`; the browser warns once ("not private"), then Advanced → Proceed.
+2. **Meetings on or off.**
 
-   Without questions: `./install.sh --domain productowner.acme.com --email it@acme.com --yes`
-   (add `--no-meetings` to leave meetings off).
+Then it starts everything (app, database, video server, HTTPS) and prints the address to open. The first person to
+open it creates the **admin account** and the first project, then invites the team from **Settings → Team**. Add your
+licence in **Settings → Licence**; until then ProductOwner runs as a trial.
 
-3. Open `https://productowner.acme.com`. The first person to open it creates the **admin account** and the first
-   project, then invites the team from **Settings → Team**.
-4. Add your licence: **Settings → Licence → Open licence file**. Until then ProductOwner runs as a trial.
+Without questions: `… | bash -s -- --domain productowner.acme.com --email it@acme.com --yes`, or
+`… | bash -s -- --local --yes` for this network only. Add `--no-meetings` to leave meetings off.
+
+By hand instead: download `productowner-install.tar.gz` from the latest release, unpack it, run `./install.sh`.
 
 The installer writes `.env` with fresh secrets. **Keep a copy of `.env` somewhere safe**, apart from the backups:
 `PO_SECRET` in it unlocks the access tokens saved in the database.
@@ -57,7 +61,7 @@ Change `.env`, then `docker compose up -d` to apply.
 | `SMTP_URL`, `EMAIL_FROM` | Sending email, e.g. `smtps://user:password@smtp.office365.com:465`. Without it, emails are written to the app log (`docker compose logs app`). |
 | `ANTHROPIC_API_KEY` | The PO agent uses Claude to draft stories and meeting recaps; without a key it uses built-in rules. |
 | `COMPOSE_PROFILES=meetings` | Meetings on. Empty: off. |
-| `MEET_DOMAIN`, `LIVEKIT_PUBLIC_URL` | The meetings address (`wss://` + `MEET_DOMAIN`). |
+| `LIVEKIT_PUBLIC_URL` | Where browsers reach the video server: `wss://` + `DOMAIN` (Caddy sends `/rtc` to it). For a separate name, set `MEET_DOMAIN` too and run `./install.sh` again. |
 | `PRODUCTOWNER_VERSION` | Which version runs (`latest` or e.g. `1.2.0`). |
 
 Meetings on a private network (office server, VPN): set `node_ip` in `livekit.yaml` to the server's address on that
@@ -92,7 +96,7 @@ and mount them in `docker-compose.yml` under `caddy.volumes`.
 | `caddy` | HTTPS in front of everything; gets and renews certificates. |
 | `app` | ProductOwner (API and web app), port 3000 inside. Files (recordings, transcripts, recaps) in the `app-files` volume. |
 | `postgres` | The database, in the `postgres-data` volume. Not reachable from outside. |
-| `livekit` | The video server for meetings. |
+| `livekit` | The video server for meetings. Starts with everything else; nothing to run separately. Media goes on UDP 7882 / TCP 7881. |
 
 ## Licence
 

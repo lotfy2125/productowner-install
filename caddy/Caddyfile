@@ -4,14 +4,22 @@
 }
 
 {$DOMAIN} {
+	# Extra settings for this address, e.g. "tls internal" on a local install (install.sh --local writes it).
+	import /etc/caddy/site/*.caddy
 	encode zstd gzip
 	header {
 		Strict-Transport-Security "max-age=31536000"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		-Server
 	}
-	reverse_proxy app:3000
+	# Meetings: the video server's connection uses the same address (paths /rtc…), so one DNS name is enough.
+	handle /rtc* {
+		reverse_proxy livekit:7880
+	}
+	handle {
+		reverse_proxy app:3000
+	}
 }
 
-# The meetings address (written by install.sh when meetings are on).
+# A separate meetings address, for installs that set MEET_DOMAIN (optional; written by install.sh).
 import /etc/caddy/sites/*.caddy
