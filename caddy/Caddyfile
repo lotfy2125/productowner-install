@@ -3,7 +3,7 @@
 	email {$ACME_EMAIL}
 }
 
-{$DOMAIN} {
+{$DOMAIN} {$EXTRA_NAMES} {
 	# Extra settings for this address, e.g. "tls internal" on a local install (install.sh --local writes it).
 	import /etc/caddy/site/*.caddy
 	encode zstd gzip

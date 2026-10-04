@@ -22,22 +22,27 @@ One line, on the server (Linux, or a Windows/Mac computer with Docker Desktop ru
 curl -fsSL https://raw.githubusercontent.com/lotfy2125/productowner-install/main/get.sh | bash
 ```
 
-It downloads the install files into `./productowner` and asks two things:
+It asks nothing. It downloads the install files into `./productowner`, starts everything (app, database, video
+server, HTTPS), and prints ProductOwner's address:
 
-1. **Where people will use it**
-   - *On the internet*: give the DNS name (e.g. `productowner.acme.com`) and an email. HTTPS certificates come from
-     Let's Encrypt by themselves; the video server finds the server's public address by itself.
-   - *Only on this network* (office or home, no DNS name): nothing to type. It finds this computer's address
-     (e.g. `192.168.1.20`), makes its own HTTPS certificate and, on Windows, asks once to let other computers in.
-     People open `https://<that address>`; the browser warns once ("not private"), then Advanced → Proceed.
-2. **Meetings on or off.**
+```
+ProductOwner's address on this network:
+  https://productowner.local      (or https://192.168.1.20)
+```
 
-Then it starts everything (app, database, video server, HTTPS) and prints the address to open. The first person to
-open it creates the **admin account** and the first project, then invites the team from **Settings → Team**. Add your
-licence in **Settings → Licence**; until then ProductOwner runs as a trial.
+That's **this network** (office or home): everyone on the same network opens it in a browser; the browser warns once
+("not private"), then Advanced → Proceed. Installed on Linux, ProductOwner announces the name `productowner.local`
+on the network itself (like a network printer). On Windows or macOS with Docker Desktop that can't reach the network,
+so the address is the number, e.g. `https://192.168.1.20`; on Windows the installer also asks once to let other
+computers in. **Settings → Team** shows the address to share, and invitation links already point to it.
 
-Without questions: `… | bash -s -- --domain productowner.acme.com --email it@acme.com --yes`, or
-`… | bash -s -- --local --yes` for this network only. Add `--no-meetings` to leave meetings off.
+**On the internet** (people anywhere): run it on a server with a DNS name pointing at it, and give the name:
+`… | bash -s -- --domain productowner.acme.com --email it@acme.com`. Real certificates come by themselves, no warning.
+An install made for this network moves to the internet later, data kept: `./set-domain.sh productowner.acme.com it@acme.com`.
+
+The first person to open it creates the **admin account** and the first project, then invites the team from
+**Settings → Team**. Add your licence in **Settings → Licence**; until then ProductOwner runs as a trial.
+Add `--no-meetings` to leave meetings off.
 
 By hand instead: download `productowner-install.tar.gz` from the latest release, unpack it, run `./install.sh`.
 

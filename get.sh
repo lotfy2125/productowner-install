@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # ProductOwner in one line (Linux, macOS, or Git Bash on Windows; Docker must be installed):
 #   curl -fsSL https://raw.githubusercontent.com/lotfy2125/productowner-install/main/get.sh | bash
-#   … | bash -s -- --local        only this network, no DNS name (finds this computer's address by itself)
-# Downloads the newest install files into ./productowner and runs ./install.sh, which asks a few questions.
+#   … | bash -s -- --domain productowner.acme.com --email it@acme.com    on the internet instead
+# Downloads the newest install files into ./productowner and runs ./install.sh. No questions: it sets up this
+# network (office/home) by itself and prints the addresses to open.
 set -euo pipefail
 export MSYS_NO_PATHCONV=1
 REPO="${PO_INSTALL_REPO:-lotfy2125/productowner-install}"

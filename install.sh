@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # ProductOwner installer: asks a few questions, writes .env with fresh secrets, starts everything.
-#   ./install.sh                         answers the questions here
-#   ./install.sh --domain po.acme.com --email it@acme.com --yes   no questions (meetings on)
-#   ./install.sh --local                 this network only, no DNS name: finds this computer's address by itself
+#   ./install.sh                                     no questions: this network (office/home), meetings on
+#   ./install.sh --domain po.acme.com --email it@acme.com   on the internet, at that DNS name
+# Switch an existing install to a DNS name later: ./set-domain.sh po.acme.com it@acme.com
 # Other options: --no-meetings  --meet-domain NAME  --image NAME  --version TAG  --image-file productowner.tar
 set -euo pipefail
 # Git Bash on Windows (for trying it out) would turn container paths like /data into Windows paths.
@@ -57,24 +57,23 @@ docker compose version >/dev/null 2>&1 || { echo "Docker Compose (the 'docker co
 if [ -f .env ]; then
   echo "This folder already has settings (.env). Starting ProductOwner with them; edit .env to change anything."
 else
-  if [ -z "$DOMAIN" ] && [ -z "$LOCAL" ] && [ "$YES" = no ]; then
-    echo "Where will people use it?"
-    echo "  1) On the internet, at a DNS name pointing at this server (e.g. productowner.acme.com)"
-    echo "  2) Only on this network (office or home), no DNS name needed: try it out or use it in-house"
-    case "$(ask "1 or 2" "1")" in 2*) LOCAL=yes ;; esac
-  fi
+  # No DNS name given: this network (office or home). Nothing to answer.
+  [ -n "$DOMAIN" ] || LOCAL=yes
   if [ -n "$LOCAL" ]; then
+    # Found by itself; asked only when it can't be found.
     IP=$(lan_ip)
-    [ -n "$IP" ] || IP=$(ask "This computer's address on the network (couldn't find it)" "192.168.1.10")
-    [ "$YES" = yes ] || IP=$(ask "This computer's address on the network" "$IP")
+    [ -n "$IP" ] || IP=$(ask "Couldn't find this computer's network address. Type the IPv4 Address that ipconfig shows" "")
+    # Only numbers like 192.168.1.20 work here; ask again for anything else.
+    while ! printf '%s' "$IP" | grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$'; do
+      [ "$YES" = no ] || { echo "Couldn't find this computer's address. Run ./install.sh --local and type it (ipconfig shows it)."; exit 1; }
+      echo "That isn't an address like 192.168.1.20. Press Enter to use the one shown, or type the IPv4 Address from ipconfig."
+      IP=$(ask "This computer's address on the network" "$(lan_ip)")
+    done
     DOMAIN=$IP
     EMAIL=${EMAIL:-admin@localhost}
   fi
   [ -n "$DOMAIN" ] || DOMAIN=$(ask "Address people will open (a DNS name pointing at this server)" "productowner.$(hostname -d 2>/dev/null || echo example.com)")
   [ -n "$EMAIL" ] || EMAIL=$(ask "Your email, for HTTPS certificate notices" "admin@${DOMAIN#*.}")
-  if [ "$YES" = no ] && [ "$MEETINGS" = yes ]; then
-    case "$(ask "Turn on meetings (video, screen share, recording)? Needs UDP port 7882 and TCP 7881 open" "yes")" in [Nn]*) MEETINGS=no ;; esac
-  fi
   [ -n "$IMAGE" ] || IMAGE=$(grep -E '^PRODUCTOWNER_IMAGE=' .env.example | cut -d= -f2-)
   [ -n "$VERSION" ] || VERSION=latest
 
@@ -90,18 +89,26 @@ else
     if [ -n "$LOCAL" ]; then
       echo "# This network only: HTTPS with ProductOwner's own certificate (browsers ask once), video server at this address."
       echo "LOCAL=yes"
+      # Names it also answers to: productowner.local (announced on Linux), the computer's name, localhost.
+      HOST=$(hostname 2>/dev/null | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')
+      echo "LOCAL_NAME=productowner.local"
+      echo "EXTRA_NAMES=productowner.local localhost${HOST:+ $HOST $HOST.local}"
       # Windows often reserves port 80; it only redirects http:// to https://, so another port is fine here.
       if on_windows; then echo "HTTP_PORT=8080"; fi
     fi
+    # On Linux a this-network install announces productowner.local (Docker Desktop on Windows/macOS can't).
+    PROFILES=""
+    [ "$MEETINGS" = yes ] && PROFILES="meetings"
+    if [ -n "$LOCAL" ] && [ "$(uname -s)" = Linux ] && ! grep -qi microsoft /proc/version 2>/dev/null; then PROFILES="${PROFILES:+$PROFILES,}name"; fi
     if [ "$MEETINGS" = yes ]; then
-      echo "COMPOSE_PROFILES=meetings"
+      echo "COMPOSE_PROFILES=$PROFILES"
       # The video server answers on the same address (Caddy sends /rtc to it). Set MEET_DOMAIN only for a separate name.
       echo "MEET_DOMAIN=${MEET:-}"
-      echo "LIVEKIT_PUBLIC_URL=wss://${MEET:-$DOMAIN}"
+      if [ -n "$MEET" ]; then echo "LIVEKIT_PUBLIC_URL=wss://$MEET"; else echo "LIVEKIT_PUBLIC_URL=same-address"; fi
       echo "LIVEKIT_API_KEY=PO$(secret 6)"
       echo "LIVEKIT_API_SECRET=$(secret 32)"
     else
-      echo "COMPOSE_PROFILES="
+      echo "COMPOSE_PROFILES=$PROFILES"
       echo "MEET_DOMAIN="
       echo "LIVEKIT_PUBLIC_URL="
     fi
@@ -160,7 +167,10 @@ if [ "${ok:-0}" != 1 ]; then echo "It's taking long. See what it says: docker co
 say "ProductOwner is running."
 if [ "$(val LOCAL)" = yes ]; then
   cat <<MSG
-  Open https://$DOMAIN on this computer or any computer on the same network.
+  ProductOwner's address on this network:
+$(case ",$(val COMPOSE_PROFILES)," in *,name,*) printf '    https://%s      (or https://%s)' "$(val LOCAL_NAME)" "$DOMAIN" ;; *) printf '    https://%s' "$DOMAIN" ;; esac)
+  Everyone on the same network opens it in a browser. Invite links (Settings → Team) already point there, and
+  Settings → Team shows the address to share.
   The browser warns once ("not private"): click Advanced, then Proceed. That's because this is ProductOwner's own
   certificate, which is fine on your own network.
   The first person to open it creates the admin account.
@@ -175,7 +185,7 @@ cat <<MSG
 
   Check that:
   - $DOMAIN${MEET_DOMAIN:+ and $MEET_DOMAIN} point at this server's public address (DNS A record);
-  - the firewall lets in TCP 80 and 443$( [ "$(val COMPOSE_PROFILES)" = meetings ] && echo ", TCP 7881 and UDP 7882 (meetings)").
+  - the firewall lets in TCP 80 and 443$(case ",$(val COMPOSE_PROFILES)," in *,meetings,*) echo ", TCP 7881 and UDP 7882 (meetings)" ;; esac).
 
   Every night: ./backup.sh  (e.g. in cron: 30 2 * * * $(pwd)/backup.sh)
   New version:  ./update.sh            (or ./update.sh 1.4.0 for a given version)

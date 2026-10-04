@@ -14,6 +14,8 @@ services:
       - "443:443/udp"
     environment:
       DOMAIN: ${DOMAIN:?Set DOMAIN in .env}
+      # More names for the same install, e.g. "localhost productowner.local" on a local install.
+      EXTRA_NAMES: ${EXTRA_NAMES:-}
       MEET_DOMAIN: ${MEET_DOMAIN:-}
       ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL in .env}
     volumes:
@@ -73,6 +75,19 @@ services:
       # Media: browsers send audio and video here (UDP first, TCP when UDP is blocked).
       - "7881:7881"
       - "7882:7882/udp"
+
+  # Announces "productowner.local" on the office network (this-network installs on Linux; install.sh turns it on).
+  name:
+    image: node:22-alpine
+    restart: unless-stopped
+    profiles: ["name"]
+    network_mode: host
+    environment:
+      MDNS_NAME: ${LOCAL_NAME:-productowner.local}
+      MDNS_IP: ${DOMAIN}
+    volumes:
+      - ./mdns.mjs:/mdns.mjs:ro
+    command: ["node", "/mdns.mjs"]
 
 volumes:
   caddy-data:
