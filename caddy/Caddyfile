@@ -1,6 +1,8 @@
 {
 	# Let's Encrypt writes here about expiring certificates (optional).
 	email {$ACME_EMAIL}
+	# Browsers don't say which name they want when opened by number (https://192.168.1.20); use this install's.
+	default_sni {$DOMAIN}
 }
 
 {$DOMAIN} {$EXTRA_NAMES} {
